@@ -27,6 +27,7 @@ jobs:
           cache: "npm"
 
       - name: Ejecutar OWASP Dependency-Check local en Windows
+        shell: cmd
         run: dependency-check.bat --project "sitioreact" --scan . --exclude "**/node_modules/**" --exclude "**/build/**" --out .\dc-report --format HTML --format JSON
 
       - name: Subir reportes de Dependency-Check como artefacto
@@ -36,6 +37,7 @@ jobs:
           path: dc-report/
 
       - name: Instalar dependencias y compilar React
+        shell: cmd
         run: |
           npm ci
           npm run build
