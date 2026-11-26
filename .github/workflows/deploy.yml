@@ -26,16 +26,8 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Ejecutar OWASP Dependency-Check
-        uses: dependency-check/Dependency-Check_Action@main
-        with:
-          project: "sitioreact"
-          path: "."
-          format: "ALL"
-          out: "dc-report"
-          args: >
-            --exclude "**/node_modules/**"
-            --exclude "**/build/**"
+      - name: Ejecutar OWASP Dependency-Check local en Windows
+        run: dependency-check.bat --project "sitioreact" --scan . --exclude "**/node_modules/**" --exclude "**/build/**" --out .\dc-report --format HTML --format JSON
 
       - name: Subir reportes de Dependency-Check como artefacto
         uses: actions/upload-artifact@v4

@@ -6,7 +6,7 @@ function App() {
     <div className="App">
       <header className="App-header">
         <p>
-        Deploy con pipeline !!!
+        Deploy con pipeline V4!!!
         </p>
        
       </header>
