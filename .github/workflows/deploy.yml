@@ -1,21 +1,15 @@
-name: Build, Dependency-Check y Deploy a GitHub Pages
+name: Analisis Local, Build y Deploy a GitHub Pages
 
 on:
   push:
     branches: ["main"]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  workflow_dispatch:
 
 jobs:
-  build-and-scan:
+  build-and-deploy:
     runs-on: self-hosted
+    permissions:
+      contents: write
     steps:
       - name: Clonar repositorio
         uses: actions/checkout@v4
@@ -26,64 +20,32 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias en local
         shell: cmd
         run: npm ci
 
-      - name: Ejecutar OWASP Dependency-Check local en Windows
+      - name: Ejecutar OWASP Dependency-Check local
         shell: cmd
         run: dependency-check.bat --project "sitioreact" --scan . --exclude "**/node_modules/**" --exclude "**/build/**" --out .\dc-report --format HTML --format JSON
 
-      - name: Subir reportes de Dependency-Check como artefacto
-        uses: actions/upload-artifact@v4
-        with:
-          name: dependency-check-reports
-          path: dc-report/
-
-      - name: Compilar React y verificar carpeta de salida
-        shell: cmd
-        run: |
-          set CI=false&& npm run build
-          if exist build (echo Carpeta detectada: build && dir /b build) else (if exist dist (echo Carpeta detectada: dist && dir /b dist) else (echo No se encontro carpeta build ni dist && exit /b 1))
-
-      - name: Empaquetar build en ZIP
+      - name: Guardar copia del reporte en carpeta local del equipo
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
-          $outDir = if (Test-Path ".\build") { ".\build" } elseif (Test-Path ".\dist") { ".\dist" } else { $null }
-          if (-not $outDir) {
-            Write-Error "No se encontró la carpeta de compilación (ni .\build ni .\dist)."
-          }
-          Compress-Archive -Path (Join-Path $outDir "*") -DestinationPath ".\site-build.zip" -Force
+          $destinoLocal = "C:\ReportesDC\sitioreact"
+          New-Item -ItemType Directory -Path $destinoLocal -Force | Out-Null
+          Copy-Item -Path ".\dc-report\*" -Destination $destinoLocal -Recurse -Force
+          Write-Host "Reporte copiado en: $destinoLocal"
 
-      - name: Subir ZIP de build como artefacto
-        uses: actions/upload-artifact@v4
-        with:
-          name: react-build-zip
-          path: site-build.zip
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build-and-scan
-    steps:
-      - name: Descargar ZIP de build
-        uses: actions/download-artifact@v4
-        with:
-          name: react-build-zip
-
-      - name: Preparar carpeta build
+      - name: Compilar React en local
+        shell: cmd
         run: |
-          mkdir -p build
-          python3 -c "import zipfile, os; z=zipfile.ZipFile('site-build.zip'); [z.extract(m.filename.replace('\\\\','/'), 'build') for m in z.infolist() if not m.is_dir()]"
+          set CI=false&& npm run build
+          if exist build (echo Carpeta de salida: build) else (if exist dist (echo Carpeta de salida: dist) else (echo No se encontro carpeta build ni dist && exit /b 1))
 
-      - name: Subir artefacto de build para Pages
-        uses: actions/upload-pages-artifact@v4
+      - name: Publicar build en GitHub Pages (rama gh-pages)
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: build
-
-      - name: Desplegar en GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          force_orphan: true
