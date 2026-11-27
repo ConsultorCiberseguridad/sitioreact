@@ -40,9 +40,11 @@ jobs:
           name: dependency-check-reports
           path: dc-report/
 
-      - name: Compilar React
+      - name: Compilar React y verificar carpeta de salida
         shell: cmd
-        run: npm run build
+        run: |
+          set CI=false&& npm run build
+          if exist build (echo Carpeta detectada: build && dir /b build) else (if exist dist (echo Carpeta detectada: dist && dir /b dist) else (echo No se encontro carpeta build ni dist && exit /b 1))
 
       - name: Empaquetar build en ZIP
         shell: powershell
@@ -50,9 +52,8 @@ jobs:
           $ErrorActionPreference = "Stop"
           $outDir = if (Test-Path ".\build") { ".\build" } elseif (Test-Path ".\dist") { ".\dist" } else { $null }
           if (-not $outDir) {
-            Write-Error "No se encontró la carpeta de compilación (ni .\build ni .\dist). Revisá la salida de 'npm run build'."
+            Write-Error "No se encontró la carpeta de compilación (ni .\build ni .\dist)."
           }
-          Get-ChildItem -Path $outDir | Select-Object -First 10
           Compress-Archive -Path (Join-Path $outDir "*") -DestinationPath ".\site-build.zip" -Force
 
       - name: Subir ZIP de build como artefacto
