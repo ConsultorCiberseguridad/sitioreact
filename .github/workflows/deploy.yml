@@ -26,11 +26,9 @@ jobs:
           node-version: "20"
           cache: "npm"
 
-      - name: Instalar dependencias y compilar React
+      - name: Instalar dependencias
         shell: cmd
-        run: |
-          npm ci
-          npm run build
+        run: npm ci
 
       - name: Ejecutar OWASP Dependency-Check local en Windows
         shell: cmd
@@ -42,9 +40,20 @@ jobs:
           name: dependency-check-reports
           path: dc-report/
 
+      - name: Compilar React
+        shell: cmd
+        run: npm run build
+
       - name: Empaquetar build en ZIP
         shell: powershell
-        run: Compress-Archive -Path .\build\* -DestinationPath .\site-build.zip -Force
+        run: |
+          $ErrorActionPreference = "Stop"
+          $outDir = if (Test-Path ".\build") { ".\build" } elseif (Test-Path ".\dist") { ".\dist" } else { $null }
+          if (-not $outDir) {
+            Write-Error "No se encontró la carpeta de compilación (ni .\build ni .\dist). Revisá la salida de 'npm run build'."
+          }
+          Get-ChildItem -Path $outDir | Select-Object -First 10
+          Compress-Archive -Path (Join-Path $outDir "*") -DestinationPath ".\site-build.zip" -Force
 
       - name: Subir ZIP de build como artefacto
         uses: actions/upload-artifact@v4
