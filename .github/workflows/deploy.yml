@@ -26,9 +26,15 @@ jobs:
           node-version: "20"
           cache: "npm"
 
+      - name: Instalar dependencias y compilar React
+        shell: cmd
+        run: |
+          npm ci
+          npm run build
+
       - name: Ejecutar OWASP Dependency-Check local en Windows
         shell: cmd
-        run: dependency-check.bat --project "sitioreact" --scan . --exclude "**/node_modules/**" --exclude "**/build/**" --out .\dc-report --format HTML --format JSON
+        run: dependency-check.bat --project "sitioreact" --scan . --exclude "**/build/**" --out .\dc-report --format HTML --format JSON
 
       - name: Subir reportes de Dependency-Check como artefacto
         uses: actions/upload-artifact@v4
@@ -36,19 +42,13 @@ jobs:
           name: dependency-check-reports
           path: dc-report/
 
-      - name: Instalar dependencias y compilar React
-        shell: cmd
-        run: |
-          npm ci
-          npm run build
-
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 
       - name: Subir artefacto de build para Pages
         uses: actions/upload-pages-artifact@v4
         env:
-          PATH: C:\Program Files\Git\usr\bin;${{ env.PATH }}
+          PATH: C:\Program Files\Git\bin;C:\Program Files\Git\usr\bin;${{ env.PATH }}
         with:
           path: build
 
