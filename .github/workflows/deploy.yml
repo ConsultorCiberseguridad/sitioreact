@@ -24,18 +24,35 @@ jobs:
         shell: cmd
         run: npm ci
 
-      - name: Ejecutar OWASP Dependency-Check local
+      - name: Ejecutar OWASP Dependency-Check local (bloquea CVSS >= 7)
         shell: cmd
-        run: dependency-check.bat --project "sitioreact" --scan . --exclude "**/node_modules/**" --exclude "**/build/**" --out .\dc-report --format HTML --format JSON
+        run: |
+          if exist dependency-check-suppressions.xml (
+            dependency-check.bat --project "sitioreact" --scan . --exclude "**/node_modules/**" --exclude "**/build/**" --suppression .\dependency-check-suppressions.xml --failOnCVSS 7 --out .\dc-report --format HTML --format JSON
+          ) else (
+            dependency-check.bat --project "sitioreact" --scan . --exclude "**/node_modules/**" --exclude "**/build/**" --failOnCVSS 7 --out .\dc-report --format HTML --format JSON
+          )
 
       - name: Guardar copia del reporte en carpeta local del equipo
+        if: always()
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
           $destinoLocal = "C:\ReportesDC\sitioreact"
-          New-Item -ItemType Directory -Path $destinoLocal -Force | Out-Null
-          Copy-Item -Path ".\dc-report\*" -Destination $destinoLocal -Recurse -Force
-          Write-Host "Reporte copiado en: $destinoLocal"
+          if (Test-Path ".\dc-report") {
+            New-Item -ItemType Directory -Path $destinoLocal -Force | Out-Null
+            Copy-Item -Path ".\dc-report\*" -Destination $destinoLocal -Recurse -Force
+            Write-Host "Reporte copiado en: $destinoLocal"
+          } else {
+            Write-Warning "No se encontró la carpeta .\dc-report para copiar."
+          }
+
+      - name: Alerta por vulnerabilidades Altas o Críticas
+        if: failure()
+        shell: powershell
+        run: |
+          $msg = "ALERTA DE SEGURIDAD: Se detectaron vulnerabilidades con severidad ALTA o CRITICA (CVSS >= 7.0) en 'sitioreact'. Se bloqueó el build y el deploy a GitHub Pages. Revisá el reporte en C:\ReportesDC\sitioreact."
+          Write-Host "::error::$msg"
 
       - name: Compilar React en local
         shell: cmd
