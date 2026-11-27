@@ -34,7 +34,7 @@ jobs:
 
       - name: Ejecutar OWASP Dependency-Check local en Windows
         shell: cmd
-        run: dependency-check.bat --project "sitioreact" --scan . --exclude "**/build/**" --out .\dc-report --format HTML --format JSON
+        run: dependency-check.bat --project "sitioreact" --scan . --exclude "**/node_modules/**" --exclude "**/build/**" --out .\dc-report --format HTML --format JSON
 
       - name: Subir reportes de Dependency-Check como artefacto
         uses: actions/upload-artifact@v4
